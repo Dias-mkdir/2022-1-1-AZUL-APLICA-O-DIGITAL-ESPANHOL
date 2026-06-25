@@ -1,57 +1,54 @@
-from PIL import Image
 import os
 import re
+from PIL import Image
 
 pasta_imagens = "sem-bordas-externas"
-pasta_saida = "."
+pasta_saida = "concatenadas-79-105"
 os.makedirs(pasta_saida, exist_ok=True)
 
-# Função segura para ordenação
+
 def get_sort_key(nome_arquivo):
-    match = re.search(r'pagina_enem_(\d+)_', nome_arquivo)
+    match = re.search(r"pagina_enem_(\d+)", nome_arquivo)
+    return int(match.group(1)) if match else -1
 
-    # Se não encontrar número, joga pro final
-    numero = int(match.group(1)) if match else float('inf')
 
-    # Define o lado: esquerda primeiro (0), depois direita (1)
-    lado = 0 if 'esquerda' in nome_arquivo.lower() else 1
+# 1. Filtra apenas arquivos .png que estão estritamente no intervalo de 60 a 105
+arquivos = []
+for f in os.listdir(pasta_imagens):
+    if f.endswith(".png"):
+        match = re.search(r"pagina_enem_(\d+)", f)
+        if match:
+            numero = int(match.group(1))
+            if 79 <= numero <= 105:  # Define o intervalo desejado
+                arquivos.append(f)
 
-    return (numero, lado)
-
-# Pegar e ordenar as imagens corretamente
-arquivos = [f for f in os.listdir(pasta_imagens) if f.lower().endswith('.png')]
+# 2. Ordena os arquivos filtrados
 arquivos.sort(key=get_sort_key)
 
-# Abrir todas as imagens na ordem correta
+# 3. Carrega as imagens na memória
 imagens = []
 for arquivo in arquivos:
     caminho = os.path.join(pasta_imagens, arquivo)
-    try:
-        img = Image.open(caminho)
-        imagens.append(img)
-        print(f"Adicionando: {arquivo}")
-    except Exception as e:
-        print(f"Erro ao abrir {arquivo}: {e}")
+    imagens.append(Image.open(caminho))
+    print(f"Adicionando: {arquivo}")
 
+# Evita erro caso a pasta esteja vazia ou nenhum arquivo combine com o filtro
 if not imagens:
-    raise Exception("Nenhuma imagem válida foi carregada.")
+    print("Nenhuma imagem encontrada no intervalo de 60 a 105.")
+    exit()
 
-# Encontrar a largura máxima
+# 4. Calcula dimensões e cria a imagem final
 largura_max = max(img.width for img in imagens)
-
-# Concatenar verticalmente
 altura_total = sum(img.height for img in imagens)
-imagem_final = Image.new('RGB', (largura_max, altura_total))
+imagem_final = Image.new("RGB", (largura_max, altura_total))
 
+# 5. Cola as imagens verticalmente
 y = 0
 for img in imagens:
     imagem_final.paste(img, (0, y))
     y += img.height
 
-# Salvar
-saida = os.path.join(pasta_saida, 'colunas_concatenadas_verticalmente.png')
-imagem_final.save(saida)
-
-print("Imagens concatenadas na ordem correta!")
-print(f"Ordem dos arquivos: {arquivos}")
-print(f"Arquivo salvo em: {saida}")
+# 6. Salva o resultado
+imagem_final.save(os.path.join(pasta_saida, "colunas_concatenadas_79-105.png"))
+print("\nImagens concatenadas na ordem correta!")
+print(f"Ordem dos arquivos processados: {arquivos}")
